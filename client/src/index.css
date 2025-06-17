@@ -30,6 +30,10 @@
   --nature-amber: hsl(43, 96%, 56%);
   --coral-red: hsl(0, 84%, 60%);
   --sage-green: hsl(158, 58%, 40%);
+  --leaf-green: hsl(120, 60%, 50%);
+  --ocean-blue: hsl(200, 80%, 60%);
+  --sunset-orange: hsl(25, 85%, 55%);
+  --earth-brown: hsl(30, 40%, 40%);
 }
 
 .dark {
@@ -96,5 +100,141 @@
   
   .bg-sage-green {
     background-color: var(--sage-green);
+  }
+  
+  .text-leaf-green {
+    color: var(--leaf-green);
+  }
+  
+  .bg-leaf-green {
+    background-color: var(--leaf-green);
+  }
+  
+  .text-ocean-blue {
+    color: var(--ocean-blue);
+  }
+  
+  .bg-ocean-blue {
+    background-color: var(--ocean-blue);
+  }
+  
+  .text-sunset-orange {
+    color: var(--sunset-orange);
+  }
+  
+  .bg-sunset-orange {
+    background-color: var(--sunset-orange);
+  }
+  
+  .text-earth-brown {
+    color: var(--earth-brown);
+  }
+  
+  .bg-earth-brown {
+    background-color: var(--earth-brown);
+  }
+  
+  /* Animations */
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+  
+  .animate-pulse-soft {
+    animation: pulse-soft 2s ease-in-out infinite;
+  }
+  
+  .animate-scale-in {
+    animation: scale-in 0.3s ease-out;
+  }
+  
+  .animate-slide-up {
+    animation: slide-up 0.5s ease-out;
+  }
+  
+  .animate-gradient {
+    background-size: 200% 200%;
+    animation: gradient 3s ease infinite;
+  }
+  
+  /* Gradient backgrounds */
+  .bg-gradient-nature {
+    background: linear-gradient(135deg, var(--eco-green) 0%, var(--leaf-green) 50%, var(--forest-green) 100%);
+  }
+  
+  .bg-gradient-ocean {
+    background: linear-gradient(135deg, var(--ocean-blue) 0%, var(--eco-green) 100%);
+  }
+  
+  .bg-gradient-sunset {
+    background: linear-gradient(135deg, var(--sunset-orange) 0%, var(--nature-amber) 100%);
+  }
+  
+  .bg-gradient-earth {
+    background: linear-gradient(135deg, var(--earth-brown) 0%, var(--sage-green) 100%);
+  }
+  
+  /* Glass morphism effects */
+  .glass {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .glass-dark {
+    background: rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulse-soft {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes scale-in {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  0% {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
   }
 }
