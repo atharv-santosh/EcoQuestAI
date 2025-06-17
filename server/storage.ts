@@ -1,140 +1,156 @@
-import { users, hunts, achievements, type User, type InsertUser, type Hunt, type InsertHunt, type Achievement, type InsertAchievement } from "@shared/schema";
+import {
+  users,
+  hunts,
+  achievements,
+  type User,
+  type UpsertUser,
+  type Hunt,
+  type InsertHunt,
+  type Achievement,
+  type InsertAchievement
+} from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
 export interface IStorage {
-  // User methods
-  getUser(id: number): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
-  updateUserPoints(userId: number, points: number): Promise<User | undefined>;
-  updateUserLocation(userId: number, location: { lat: number; lng: number; address?: string }): Promise<User | undefined>;
+  // User methods (updated for authentication)
+  getUser(id: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
+  updateUserPoints(userId: string, points: number): Promise<User | undefined>;
+  updateUserLocation(userId: string, location: { lat: number; lng: number; address?: string }): Promise<User | undefined>;
 
   // Hunt methods
   createHunt(hunt: InsertHunt): Promise<Hunt>;
   getHunt(id: number): Promise<Hunt | undefined>;
-  getUserHunts(userId: number): Promise<Hunt[]>;
+  getUserHunts(userId: string): Promise<Hunt[]>;
   updateHunt(id: number, updates: Partial<Hunt>): Promise<Hunt | undefined>;
-  getActiveHunt(userId: number): Promise<Hunt | undefined>;
+  getActiveHunt(userId: string): Promise<Hunt | undefined>;
 
   // Achievement methods
   createAchievement(achievement: InsertAchievement): Promise<Achievement>;
-  getUserAchievements(userId: number): Promise<Achievement[]>;
-  checkAndAwardAchievements(userId: number, huntData: Hunt): Promise<Achievement[]>;
+  getUserAchievements(userId: string): Promise<Achievement[]>;
+  checkAndAwardAchievements(userId: string, huntData: Hunt): Promise<Achievement[]>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private hunts: Map<number, Hunt>;
-  private achievements: Map<number, Achievement>;
-  private currentUserId: number;
-  private currentHuntId: number;
-  private currentAchievementId: number;
-
-  constructor() {
-    this.users = new Map();
-    this.hunts = new Map();
-    this.achievements = new Map();
-    this.currentUserId = 1;
-    this.currentHuntId = 1;
-    this.currentAchievementId = 1;
+export class DatabaseStorage implements IStorage {
+  // User methods
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
   }
 
-  async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.currentUserId++;
-    const user: User = { ...insertUser, id, points: 0, location: null };
-    this.users.set(id, user);
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
     return user;
   }
 
-  async updateUserPoints(userId: number, points: number): Promise<User | undefined> {
-    const user = this.users.get(userId);
+  async updateUserPoints(userId: string, points: number): Promise<User | undefined> {
+    const user = await this.getUser(userId);
     if (!user) return undefined;
+
+    const [updatedUser] = await db
+      .update(users)
+      .set({ 
+        points: (user.points || 0) + points,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId))
+      .returning();
     
-    const updatedUser = { ...user, points: (user.points || 0) + points };
-    this.users.set(userId, updatedUser);
-    return updatedUser;
+    return updatedUser || undefined;
   }
 
-  async updateUserLocation(userId: number, location: { lat: number; lng: number; address?: string }): Promise<User | undefined> {
-    const user = this.users.get(userId);
-    if (!user) return undefined;
+  async updateUserLocation(userId: string, location: { lat: number; lng: number; address?: string }): Promise<User | undefined> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({ 
+        location,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId))
+      .returning();
     
-    const updatedUser = { ...user, location };
-    this.users.set(userId, updatedUser);
-    return updatedUser;
+    return updatedUser || undefined;
   }
 
+  // Hunt methods
   async createHunt(insertHunt: InsertHunt): Promise<Hunt> {
-    const id = this.currentHuntId++;
-    const now = new Date();
-    const hunt: Hunt = { 
-      ...insertHunt, 
-      id, 
-      createdAt: now,
-      completedStops: 0 
-    };
-    this.hunts.set(id, hunt);
+    const [hunt] = await db
+      .insert(hunts)
+      .values(insertHunt)
+      .returning();
     return hunt;
   }
 
   async getHunt(id: number): Promise<Hunt | undefined> {
-    return this.hunts.get(id);
+    const [hunt] = await db.select().from(hunts).where(eq(hunts.id, id));
+    return hunt || undefined;
   }
 
-  async getUserHunts(userId: number): Promise<Hunt[]> {
-    return Array.from(this.hunts.values()).filter(hunt => hunt.userId === userId);
+  async getUserHunts(userId: string): Promise<Hunt[]> {
+    return await db.select().from(hunts).where(eq(hunts.userId, userId));
   }
 
   async updateHunt(id: number, updates: Partial<Hunt>): Promise<Hunt | undefined> {
-    const hunt = this.hunts.get(id);
-    if (!hunt) return undefined;
+    const [updatedHunt] = await db
+      .update(hunts)
+      .set(updates)
+      .where(eq(hunts.id, id))
+      .returning();
     
-    const updatedHunt = { ...hunt, ...updates };
-    this.hunts.set(id, updatedHunt);
-    return updatedHunt;
+    return updatedHunt || undefined;
   }
 
-  async getActiveHunt(userId: number): Promise<Hunt | undefined> {
-    return Array.from(this.hunts.values()).find(
-      hunt => hunt.userId === userId && hunt.status === 'active'
-    );
+  async getActiveHunt(userId: string): Promise<Hunt | undefined> {
+    const [hunt] = await db
+      .select()
+      .from(hunts)
+      .where(eq(hunts.userId, userId) && eq(hunts.status, 'active'));
+    
+    return hunt || undefined;
   }
 
+  // Achievement methods
   async createAchievement(insertAchievement: InsertAchievement): Promise<Achievement> {
-    const id = this.currentAchievementId++;
-    const now = new Date();
-    const achievement: Achievement = { ...insertAchievement, id, earnedAt: now };
-    this.achievements.set(id, achievement);
+    const [achievement] = await db
+      .insert(achievements)
+      .values(insertAchievement)
+      .returning();
     return achievement;
   }
 
-  async getUserAchievements(userId: number): Promise<Achievement[]> {
-    return Array.from(this.achievements.values()).filter(
-      achievement => achievement.userId === userId
-    );
+  async getUserAchievements(userId: string): Promise<Achievement[]> {
+    return await db.select().from(achievements).where(eq(achievements.userId, userId));
   }
 
-  async checkAndAwardAchievements(userId: number, huntData: Hunt): Promise<Achievement[]> {
+  async checkAndAwardAchievements(userId: string, huntData: Hunt): Promise<Achievement[]> {
     const userAchievements = await this.getUserAchievements(userId);
     const existingTypes = new Set(userAchievements.map(a => a.type));
     const newAchievements: Achievement[] = [];
     
     // Check for nature photographer achievement
-    if (!existingTypes.has('nature-photographer') && huntData.theme === 'pollinator-hunt' && huntData.completedStops >= 3) {
+    if (!existingTypes.has('nature-photographer') && huntData.theme === 'pollinator-hunt' && (huntData.completedStops || 0) >= 3) {
       const achievement = await this.createAchievement({
         userId,
         type: 'nature-photographer',
         title: 'Nature Photographer',
-        description: 'Captured 10 different plant species'
+        description: 'Captured 3 different plant species'
       });
       newAchievements.push(achievement);
     }
@@ -151,7 +167,7 @@ export class MemStorage implements IStorage {
     }
     
     // Check for eco scholar achievement
-    if (!existingTypes.has('eco-scholar') && huntData.completedStops >= 5) {
+    if (!existingTypes.has('eco-scholar') && (huntData.completedStops || 0) >= 5) {
       const achievement = await this.createAchievement({
         userId,
         type: 'eco-scholar',
@@ -165,4 +181,4 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();

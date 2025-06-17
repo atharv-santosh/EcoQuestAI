@@ -204,9 +204,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a demo user for testing
   app.post("/api/users/demo", async (req, res) => {
     try {
-      const demoUser = await storage.createUser({
-        username: `demo_user_${Date.now()}`,
-        password: "demo123"
+      const demoUser = await storage.upsertUser({
+        id: `demo_user_${Date.now()}`,
+        email: `demo${Date.now()}@example.com`,
+        firstName: "Demo",
+        lastName: "User"
       });
       
       // Award some initial points
