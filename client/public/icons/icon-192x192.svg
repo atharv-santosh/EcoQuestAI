@@ -1,0 +1,10 @@
+<svg width="192" height="192" viewBox="0 0 192 192" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="192" height="192" rx="24" fill="#059669"/>
+  <circle cx="96" cy="72" r="32" fill="#10B981"/>
+  <path d="M96 48L112 64L96 80L80 64L96 48Z" fill="white"/>
+  <circle cx="72" cy="120" r="16" fill="#34D399"/>
+  <circle cx="120" cy="120" r="16" fill="#34D399"/>
+  <circle cx="96" cy="144" r="12" fill="#6EE7B7"/>
+  <path d="M48 160H144C148.418 160 152 163.582 152 168C152 172.418 148.418 176 144 176H48C43.5817 176 40 172.418 40 168C40 163.582 43.5817 160 48 160Z" fill="#047857"/>
+  <text x="96" y="170" text-anchor="middle" fill="white" font-family="system-ui, -apple-system" font-size="12" font-weight="600">ECO</text>
+</svg>

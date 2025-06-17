@@ -2,11 +2,97 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- iOS PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="EcoQuest AI" />
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#059669" />
+    <meta name="msapplication-TileColor" content="#059669" />
+    
+    <!-- SEO Meta Tags -->
+    <title>EcoQuest AI - AI-Powered Green Adventures</title>
+    <meta name="description" content="Discover eco-friendly treasure hunts in your local area. AI-generated adventures that help you explore green spaces, sustainable businesses, and hidden natural gems." />
+    <meta name="keywords" content="eco-friendly, treasure hunt, AI, green adventure, sustainability, nature exploration, environmental education" />
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="EcoQuest AI - AI-Powered Green Adventures" />
+    <meta property="og:description" content="Transform your neighborhood into an eco-adventure playground with AI-generated treasure hunts." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/screenshots/mobile-home.png" />
+    
+    <!-- Mobile-specific styles -->
+    <style>
+      /* Prevent zoom on input focus */
+      input, select, textarea {
+        font-size: 16px !important;
+      }
+      
+      /* Smooth scrolling for mobile */
+      html {
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch;
+      }
+      
+      /* Remove tap highlight */
+      * {
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      
+      /* Allow text selection for content */
+      p, span, div[contenteditable], input, textarea {
+        -webkit-user-select: text;
+        user-select: text;
+      }
+      
+      /* Optimize touch targets */
+      button, a, [role="button"] {
+        min-height: 44px;
+        min-width: 44px;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- PWA Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('SW registered: ', registration);
+            })
+            .catch((registrationError) => {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+      }
+      
+      // PWA Install Prompt
+      let deferredPrompt;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        // Show install button/banner
+        const installButton = document.getElementById('install-button');
+        if (installButton) {
+          installButton.style.display = 'block';
+        }
+      });
+    </script>
+    
     <!-- This is a replit script which adds a banner on the top of the page when opened in development mode outside the replit environment -->
     <script type="text/javascript" src="https://replit.com/public/js/replit-dev-banner.js"></script>
   </body>
