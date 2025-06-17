@@ -40,7 +40,7 @@ const themeData = {
   'pollinator-hunt': {
     gradient: 'bg-gradient-to-r from-yellow-400 to-pink-400',
     colorClass: 'bg-yellow-400 bg-opacity-20 text-yellow-600',
-    bgImage: 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300',
+    bgImage: 'https://images.unsplash.com/photo-1500740516770-92bd004b996e?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300',
     difficulty: 'Easy',
     duration: '30 min',
     popularity: '4.9',
@@ -165,7 +165,7 @@ export default function ThemeCard({
 
       {/* Hover Effect Overlay */}
       {isHovered && !selected && (
-        <div className="absolute inset-0 bg-white bg-opacity-10 backdrop-blur-sm animate-scale-in" />
+        <div className="absolute inset-0 bg-white bg-opacity-5 animate-scale-in" />
       )}
     </Card>
   );

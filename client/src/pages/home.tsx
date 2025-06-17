@@ -362,17 +362,6 @@ export default function Home() {
               <div className="absolute -inset-1 bg-gradient-to-r from-eco-green to-forest-green rounded-2xl blur opacity-20 animate-pulse"></div>
             )}
           </div>
-          
-          <div className="mt-4 flex items-center justify-center space-x-4 text-xs text-gray-500">
-            <div className="flex items-center space-x-1">
-              <div className="w-2 h-2 bg-eco-green rounded-full animate-pulse"></div>
-              <span>AI-powered route generation</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <div className="w-2 h-2 bg-nature-amber rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
-              <span>Personalized challenges</span>
-            </div>
-          </div>
         </section>
       </div>
     </Layout>
