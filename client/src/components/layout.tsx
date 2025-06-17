@@ -140,7 +140,7 @@ export default function Layout({ children, userPoints = 0 }: LayoutProps) {
           {[
             { href: '/', icon: Home, label: 'Home', color: 'text-eco-green' },
             { href: '/explore', icon: Compass, label: 'Explore', color: 'text-ocean-blue' },
-            { href: '/achievements', icon: Trophy, label: 'Badges', color: 'text-nature-amber' },
+            { href: '/badges', icon: Trophy, label: 'Badges', color: 'text-nature-amber' },
             { href: '/profile', icon: User, label: 'Profile', color: 'text-sunset-orange' },
           ].map((item) => {
             const Icon = item.icon;

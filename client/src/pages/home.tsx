@@ -333,10 +333,10 @@ export default function Home() {
             <Button 
               onClick={handleGenerateHunt}
               disabled={generateHuntMutation.isPending || !selectedTheme}
-              className={`w-full py-6 rounded-2xl font-bold text-lg shadow-2xl transition-all duration-300 transform ${
+              className={`w-full py-6 rounded-2xl font-bold text-lg shadow-2xl transition-all duration-300 transform text-white ${
                 selectedTheme 
-                  ? 'bg-gradient-to-r from-eco-green via-forest-green to-eco-green bg-gradient animate-gradient hover:scale-105' 
-                  : 'bg-gray-400'
+                  ? 'bg-gradient-to-r from-eco-green via-forest-green to-eco-green hover:scale-105 hover:shadow-3xl border-2 border-white/20' 
+                  : 'bg-gray-400 cursor-not-allowed'
               }`}
             >
               {generateHuntMutation.isPending ? (

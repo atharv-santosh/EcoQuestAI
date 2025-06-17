@@ -5,6 +5,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Home from "@/pages/home";
 import Hunt from "@/pages/hunt";
+import Explore from "@/pages/explore";
+import Badges from "@/pages/badges";
+import Profile from "@/pages/profile";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -12,6 +15,9 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/hunt/:id" component={Hunt} />
+      <Route path="/explore" component={Explore} />
+      <Route path="/badges" component={Badges} />
+      <Route path="/profile" component={Profile} />
       <Route component={NotFound} />
     </Switch>
   );
