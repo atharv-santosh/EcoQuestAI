@@ -2,6 +2,202 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Mobile-First PWA Optimizations */
+@layer base {
+  /* Prevent zoom on input focus for iOS */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+  
+  /* Smooth scrolling and touch optimization */
+  html {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    height: 100%;
+    height: -webkit-fill-available;
+  }
+  
+  body {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    overscroll-behavior-y: none;
+  }
+  
+  /* Remove tap highlights and optimize touch */
+  * {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+  }
+  
+  /* Allow text selection where needed */
+  p, span, div[contenteditable], input, textarea {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+  
+  /* iOS safe area support */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-area-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  
+  .safe-area-right {
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+@layer components {
+  /* Mobile touch targets */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Mobile-optimized buttons */
+  .mobile-button {
+    @apply touch-target px-6 py-3 rounded-xl font-semibold text-base;
+    @apply transform transition-all duration-200;
+    @apply active:scale-95 active:brightness-110;
+  }
+  
+  /* Glass morphism effect for mobile */
+  .glass-mobile {
+    @apply backdrop-blur-lg bg-white/10 border border-white/20;
+    @apply shadow-lg shadow-black/10;
+  }
+  
+  /* Mobile navigation */
+  .mobile-nav {
+    @apply fixed bottom-0 left-0 right-0 z-50;
+    @apply bg-white/90 backdrop-blur-lg border-t border-gray-200/50;
+    @apply safe-area-bottom;
+  }
+  
+  /* Mobile card optimization */
+  .mobile-card {
+    @apply rounded-2xl p-4 shadow-lg;
+    @apply transform transition-all duration-300;
+    @apply active:scale-98 hover:shadow-xl;
+  }
+  
+  /* Fullscreen mobile container */
+  .mobile-container {
+    @apply min-h-screen flex flex-col;
+    @apply safe-area-top safe-area-bottom;
+  }
+  
+  /* Mobile header */
+  .mobile-header {
+    @apply sticky top-0 z-40 bg-white/90 backdrop-blur-lg;
+    @apply border-b border-gray-200/50 safe-area-top;
+  }
+  
+  /* Swipe indicator */
+  .swipe-indicator {
+    @apply w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4;
+  }
+}
+
+@layer utilities {
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Mobile viewport units */
+  .h-mobile-screen {
+    height: 100vh;
+    height: -webkit-fill-available;
+  }
+  
+  .min-h-mobile-screen {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+  
+  /* Mobile text sizes */
+  .text-mobile-xs { font-size: 14px; }
+  .text-mobile-sm { font-size: 16px; }
+  .text-mobile-base { font-size: 18px; }
+  .text-mobile-lg { font-size: 20px; }
+  .text-mobile-xl { font-size: 24px; }
+  .text-mobile-2xl { font-size: 28px; }
+  
+  /* Pull-to-refresh styles */
+  .pull-to-refresh {
+    @apply transform transition-transform duration-300;
+  }
+  
+  .pull-to-refresh.pulling {
+    @apply translate-y-2;
+  }
+}
+
+/* PWA specific styles */
+@media (display-mode: standalone) {
+  body {
+    /* App is running in standalone mode */
+    background-color: #f8fafc;
+  }
+  
+  .pwa-only {
+    display: block !important;
+  }
+  
+  .browser-only {
+    display: none !important;
+  }
+}
+
+/* Mobile responsive breakpoints */
+@media screen and (max-width: 640px) {
+  /* Stack elements vertically on small screens */
+  .sm-stack > * {
+    @apply w-full mb-4;
+  }
+  
+  .sm-stack > *:last-child {
+    @apply mb-0;
+  }
+  
+  /* Larger touch targets on mobile */
+  button, a, [role="button"] {
+    @apply touch-target;
+  }
+  
+  /* Full-width modals on mobile */
+  .modal-mobile {
+    @apply w-full h-full rounded-none;
+  }
+}
+
+/* Tablet optimizations */
+@media screen and (min-width: 641px) and (max-width: 1024px) {
+  .tablet-grid {
+    @apply grid grid-cols-2 gap-4;
+  }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .high-dpi-image {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+}
+
 :root {
   --background: hsl(0, 0%, 100%);
   --foreground: hsl(20, 14.3%, 4.1%);
