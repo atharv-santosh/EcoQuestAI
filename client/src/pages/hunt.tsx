@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useParams } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,15 +8,15 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import Layout from "@/components/layout";
-import MapComponent from "@/components/map-component";
-import PhotoCapture from "@/components/photo-capture";
-import { Camera, Lightbulb, CheckCircle, Clock, MapPin, Coins } from "lucide-react";
+import GoogleMap from "@/components/google-map";
+import AdventureChallenge from "@/components/adventure-challenge";
+import { Camera, Lightbulb, CheckCircle, Clock, MapPin, Coins, Navigation } from "lucide-react";
 
 export default function Hunt() {
   const { id } = useParams();
   const huntId = parseInt(id || "0");
-  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
-  const [currentStopId, setCurrentStopId] = useState<string>("");
+  const [selectedStop, setSelectedStop] = useState<any>(null);
+  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
   const { toast } = useToast();
 
   // Get hunt data
@@ -27,26 +27,17 @@ export default function Hunt() {
 
   // Complete stop mutation
   const completeStopMutation = useMutation({
-    mutationFn: async (data: { stopId: string; answer?: string; photoData?: string }) => {
-      const response = await apiRequest("POST", `/api/hunts/${huntId}/stops/${data.stopId}/complete`, data);
+    mutationFn: async (data: { stopId: string; completed: boolean; photoData?: string }) => {
+      const response = await apiRequest("PUT", `/api/hunts/${huntId}/stops/${data.stopId}`, data);
       return response.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/hunts', huntId] });
+      setSelectedStop(null);
       toast({
         title: "Challenge Completed!",
-        description: `You earned ${data.pointsEarned} points!`,
+        description: "Great work! Keep exploring.",
       });
-      
-      // Show achievements if any
-      if (data.achievements && data.achievements.length > 0) {
-        data.achievements.forEach((achievement: any) => {
-          toast({
-            title: "New Achievement!",
-            description: `${achievement.title}: ${achievement.description}`,
-          });
-        });
-      }
     },
     onError: (error: any) => {
       toast({
@@ -71,21 +62,38 @@ export default function Hunt() {
     }
   });
 
-  const handleTakePhoto = (stopId: string) => {
-    setCurrentStopId(stopId);
-    setIsPhotoModalOpen(true);
-  };
-
-  const handlePhotoSubmit = (photoData: string) => {
+  const handleStopComplete = (stopId: string, data?: any) => {
     completeStopMutation.mutate({
-      stopId: currentStopId,
-      photoData
+      stopId,
+      completed: true,
+      photoData: data?.photo
     });
   };
 
-  const handleGetHint = (stopId: string) => {
-    getHintMutation.mutate(stopId);
+  const handleStopClick = (stop: any) => {
+    setSelectedStop(stop);
   };
+
+  const handleNavigate = (stop: any) => {
+    const destination = `${stop.location.lat},${stop.location.lng}`;
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
+    window.open(url, '_blank');
+  };
+
+  // Get user location
+  React.useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        (error) => console.warn('Could not get location:', error)
+      );
+    }
+  }, []);
 
   if (isLoading) {
     return (
@@ -108,9 +116,20 @@ export default function Hunt() {
     );
   }
 
-  const progressPercentage = hunt.stops.length > 0 ? (hunt.completedStops / hunt.stops.length) * 100 : 0;
-  const currentStop = hunt.stops.find(stop => !stop.completed);
-  const completedStops = hunt.stops.filter(stop => stop.completed);
+  if (!hunt.stops || !Array.isArray(hunt.stops)) {
+    return (
+      <Layout>
+        <Card className="p-6 text-center">
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Invalid Hunt Data</h2>
+          <p className="text-gray-600">This hunt has invalid data. Please try creating a new adventure.</p>
+        </Card>
+      </Layout>
+    );
+  }
+
+  const completedStops = hunt.stops.filter((stop: any) => stop.completed);
+  const progressPercentage = hunt.stops.length > 0 ? (completedStops.length / hunt.stops.length) * 100 : 0;
+  const totalPoints = hunt.stops.reduce((sum: number, stop: any) => sum + stop.points, 0);
 
   return (
     <Layout>
@@ -119,14 +138,14 @@ export default function Hunt() {
         <Card className="p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-lg font-semibold text-gray-900">{hunt.title}</h3>
-            <Badge className="bg-eco-green text-white">
-              {hunt.status === 'completed' ? 'Completed' : 'Active'}
+            <Badge className="bg-emerald-600 text-white">
+              {progressPercentage === 100 ? 'Completed' : 'Active'}
             </Badge>
           </div>
           <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
             <span>
               <MapPin className="w-4 h-4 inline mr-1" />
-              {hunt.location.address}
+              {hunt.location?.address || 'Adventure Location'}
             </span>
             <span>
               <Clock className="w-4 h-4 inline mr-1" />

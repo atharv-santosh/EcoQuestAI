@@ -135,9 +135,9 @@ Return the response in this exact JSON format:
     }
 
     return result;
-  } catch (error) {
+  } catch (error: any) {
     console.error('OpenAI API error:', error);
-    throw new Error(`Failed to generate eco route: ${error.message}`);
+    throw new Error(`Failed to generate eco route: ${error?.message || 'Unknown error'}`);
   }
 }
 

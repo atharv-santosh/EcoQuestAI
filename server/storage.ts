@@ -93,7 +93,7 @@ export class DatabaseStorage implements IStorage {
   async createHunt(insertHunt: InsertHunt): Promise<Hunt> {
     const [hunt] = await db
       .insert(hunts)
-      .values(insertHunt)
+      .values([insertHunt])
       .returning();
     return hunt;
   }

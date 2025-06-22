@@ -56,7 +56,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.updateUserLocation(userId, location);
 
       res.json(hunt);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating hunt:", error);
       res.status(500).json({ 
         message: error.message || "Failed to create hunt" 
@@ -67,7 +67,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get user's active hunt
   app.get("/api/hunts/active/:userId", async (req, res) => {
     try {
-      const userId = parseInt(req.params.userId);
+      const userId = req.params.userId;
       const hunt = await storage.getActiveHunt(userId);
       
       if (!hunt) {
@@ -84,7 +84,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get user's hunt history
   app.get("/api/hunts/user/:userId", async (req, res) => {
     try {
-      const userId = parseInt(req.params.userId);
+      const userId = req.params.userId;
       const hunts = await storage.getUserHunts(userId);
       res.json(hunts);
     } catch (error) {
@@ -176,7 +176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get user profile with achievements
   app.get("/api/users/:userId/profile", async (req, res) => {
     try {
-      const userId = parseInt(req.params.userId);
+      const userId = req.params.userId;
       
       const user = await storage.getUser(userId);
       if (!user) {
