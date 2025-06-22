@@ -46,6 +46,19 @@ export async function generateEcoRoute({
   stops: RouteStop[];
   totalPoints: number;
 }> {
+  // Try to get a pre-built adventure first (instant response)
+  const preBuiltAdventure = getAdventureByLocation(theme, location.lat, location.lng);
+  if (preBuiltAdventure) {
+    const totalPoints = preBuiltAdventure.stops.reduce((sum, stop) => sum + stop.points, 0);
+    return {
+      title: preBuiltAdventure.title,
+      description: preBuiltAdventure.description,
+      stops: preBuiltAdventure.stops,
+      totalPoints
+    };
+  }
+
+  // Fallback to AI generation if no pre-built adventure matches
   const themePrompts = {
     'urban-nature': 'Focus on parks, green spaces, urban gardens, street trees, and wildlife habitats within the city',
     'sustainable-shopping': 'Include eco-friendly stores, farmers markets, zero-waste shops, organic food stores, and sustainable businesses',
