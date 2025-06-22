@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect } from "react";
+import React, { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Home, Compass, Trophy, User, Coins, Leaf, Zap, Globe, Star } from "lucide-react";
 

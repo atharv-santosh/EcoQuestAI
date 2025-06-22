@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import Layout from "@/components/layout";
-import GoogleMap from "@/components/google-map";
+import SimpleMap from "@/components/simple-map";
 import AdventureChallenge from "@/components/adventure-challenge";
 import { Camera, Lightbulb, CheckCircle, Clock, MapPin, Coins, Navigation, Star } from "lucide-react";
 
@@ -168,15 +168,12 @@ export default function Hunt() {
         {/* Map */}
         <Card className="p-4">
           <h4 className="font-semibold mb-3">Adventure Map</h4>
-          <div className="h-80 bg-gray-100 rounded-lg overflow-hidden">
-            <GoogleMap 
-              stops={hunt.stops} 
-              userLocation={userLocation}
-              onStopClick={handleStopClick}
-              onNavigate={handleNavigate}
-              className="w-full h-full"
-            />
-          </div>
+          <SimpleMap 
+            stops={hunt.stops} 
+            userLocation={userLocation}
+            onStopClick={handleStopClick}
+            className="w-full"
+          />
         </Card>
 
         {/* Selected Challenge */}
