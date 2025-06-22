@@ -21,17 +21,10 @@ function Router() {
   );
 }
 
-function App() {
+export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <InstallPrompt />
-        <Toaster />
-        <Router />
-        <InstallButton />
-      </TooltipProvider>
+      <Router />
     </QueryClientProvider>
   );
 }
-
-export default App;
