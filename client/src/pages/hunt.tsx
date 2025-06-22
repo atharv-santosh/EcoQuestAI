@@ -10,7 +10,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import Layout from "@/components/layout";
 import GoogleMap from "@/components/google-map";
 import AdventureChallenge from "@/components/adventure-challenge";
-import { Camera, Lightbulb, CheckCircle, Clock, MapPin, Coins, Navigation } from "lucide-react";
+import { Camera, Lightbulb, CheckCircle, Clock, MapPin, Coins, Navigation, Star } from "lucide-react";
 
 export default function Hunt() {
   const { id } = useParams();
@@ -59,6 +59,12 @@ export default function Hunt() {
         title: "Hint",
         description: data.hint,
       });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Hint",
+        description: "Keep exploring! Look around for clues related to nature and sustainability.",
+      });
     }
   });
 
@@ -99,7 +105,7 @@ export default function Hunt() {
     return (
       <Layout>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-eco-green"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
         </div>
       </Layout>
     );
@@ -148,158 +154,81 @@ export default function Hunt() {
               {hunt.location?.address || 'Adventure Location'}
             </span>
             <span>
-              <Clock className="w-4 h-4 inline mr-1" />
-              45 min walk
+              <Coins className="w-4 h-4 inline mr-1" />
+              {totalPoints} points total
             </span>
           </div>
           <Progress value={progressPercentage} className="mb-2" />
-          <p className="text-xs text-gray-500">
-            Progress: {hunt.completedStops} of {hunt.stops.length} stops completed
-          </p>
+          <div className="flex items-center justify-between text-xs text-gray-500">
+            <span>{completedStops.length} of {hunt.stops.length} stops completed</span>
+            <span>{Math.round(progressPercentage)}% complete</span>
+          </div>
         </Card>
 
         {/* Map */}
-        <MapComponent 
-          stops={hunt.stops}
-          userLocation={hunt.location}
-        />
+        <Card className="p-4">
+          <h4 className="font-semibold mb-3">Adventure Map</h4>
+          <div className="h-80 bg-gray-100 rounded-lg overflow-hidden">
+            <GoogleMap 
+              stops={hunt.stops} 
+              userLocation={userLocation}
+              onStopClick={handleStopClick}
+              onNavigate={handleNavigate}
+              className="w-full h-full"
+            />
+          </div>
+        </Card>
 
-        {/* Current Challenge */}
-        {currentStop && hunt.status !== 'completed' && (
-          <Card className="bg-gradient-to-r from-eco-green to-forest-green text-white p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="font-semibold">Current Challenge</h4>
-              <Badge className="bg-white bg-opacity-20 text-white">
-                Stop {hunt.completedStops + 1} of {hunt.stops.length}
-              </Badge>
-            </div>
-            <h5 className="text-lg font-semibold mb-2">{currentStop.title}</h5>
-            <p className="text-sm opacity-90 mb-4">{currentStop.description}</p>
-            
-            {currentStop.type === 'photo' && (
-              <div className="flex space-x-3">
-                <Button 
-                  onClick={() => handleTakePhoto(currentStop.id)}
-                  className="bg-white text-eco-green hover:bg-gray-100 flex-1"
-                  disabled={completeStopMutation.isPending}
-                >
-                  <Camera className="w-4 h-4 mr-2" />
-                  Take Photo
-                </Button>
-                <Button 
-                  onClick={() => handleGetHint(currentStop.id)}
-                  variant="ghost"
-                  className="bg-white bg-opacity-20 text-white hover:bg-white hover:bg-opacity-30"
-                  disabled={getHintMutation.isPending}
-                >
-                  <Lightbulb className="w-4 h-4 mr-2" />
-                  Hint
-                </Button>
-              </div>
-            )}
-
-            {currentStop.type === 'trivia' && currentStop.challenge.question && (
-              <div className="space-y-3">
-                <p className="font-medium">{currentStop.challenge.question}</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {currentStop.challenge.options?.map((option, index) => (
-                    <Button
-                      key={index}
-                      onClick={() => completeStopMutation.mutate({
-                        stopId: currentStop.id,
-                        answer: option
-                      })}
-                      className="bg-white bg-opacity-20 text-white hover:bg-white hover:bg-opacity-30"
-                      disabled={completeStopMutation.isPending}
-                    >
-                      {option}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {currentStop.type === 'task' && (
-              <div className="flex space-x-3">
-                <Button 
-                  onClick={() => completeStopMutation.mutate({ stopId: currentStop.id })}
-                  className="bg-white text-eco-green hover:bg-gray-100 flex-1"
-                  disabled={completeStopMutation.isPending}
-                >
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Mark Complete
-                </Button>
-                <Button 
-                  onClick={() => handleGetHint(currentStop.id)}
-                  variant="ghost"
-                  className="bg-white bg-opacity-20 text-white hover:bg-white hover:bg-opacity-30"
-                  disabled={getHintMutation.isPending}
-                >
-                  <Lightbulb className="w-4 h-4 mr-2" />
-                  Hint
-                </Button>
-              </div>
-            )}
-          </Card>
+        {/* Selected Challenge */}
+        {selectedStop && (
+          <AdventureChallenge
+            stop={selectedStop}
+            onComplete={handleStopComplete}
+            onNavigate={handleNavigate}
+          />
         )}
 
-        {/* Completed Stops */}
-        {completedStops.length > 0 && (
+        {/* All Stops */}
+        <Card className="p-4">
+          <h4 className="font-semibold text-gray-900 mb-3">Adventure Stops ({hunt.stops.length})</h4>
           <div className="space-y-3">
-            <h4 className="font-semibold text-gray-900">Completed Stops</h4>
-            
-            {completedStops.map((stop) => (
-              <Card key={stop.id} className="p-4">
-                <div className="flex items-start space-x-3">
-                  <div className="w-10 h-10 bg-sage-green rounded-full flex items-center justify-center flex-shrink-0">
-                    <CheckCircle className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <h5 className="font-medium text-gray-900">{stop.title}</h5>
-                    <p className="text-sm text-gray-600 mb-2">{stop.description}</p>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <span className="text-xs text-sage-green font-medium">
-                          <Coins className="w-3 h-3 inline mr-1" />
-                          +{stop.points} points
-                        </span>
-                      </div>
-                      <div className="w-12 h-12 rounded-lg bg-eco-green bg-opacity-20 flex items-center justify-center">
-                        {stop.type === 'photo' ? (
-                          <Camera className="w-5 h-5 text-eco-green" />
-                        ) : stop.type === 'trivia' ? (
-                          <Lightbulb className="w-5 h-5 text-eco-green" />
-                        ) : (
-                          <CheckCircle className="w-5 h-5 text-eco-green" />
-                        )}
-                      </div>
+            {hunt.stops.map((stop: any, index: number) => (
+              <div 
+                key={stop.id} 
+                className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                  stop.completed 
+                    ? 'bg-green-50 border-green-200' 
+                    : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                }`}
+                onClick={() => handleStopClick(stop)}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+                      stop.completed ? 'bg-green-600' : 'bg-gray-400'
+                    }`}>
+                      {stop.completed ? <CheckCircle className="w-4 h-4" /> : index + 1}
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">{stop.title}</p>
+                      <p className="text-xs text-gray-600">{stop.address}</p>
                     </div>
                   </div>
+                  <div className="flex items-center space-x-2">
+                    <Badge variant="outline" className="text-xs">
+                      {stop.points} pts
+                    </Badge>
+                    {stop.type === 'photo' && <Camera className="w-4 h-4 text-blue-600" />}
+                    {stop.type === 'trivia' && <Star className="w-4 h-4 text-purple-600" />}
+                    {stop.type === 'task' && <CheckCircle className="w-4 h-4 text-green-600" />}
+                    <Navigation className="w-4 h-4 text-gray-400" />
+                  </div>
                 </div>
-              </Card>
+              </div>
             ))}
           </div>
-        )}
-
-        {/* Completion Message */}
-        {hunt.status === 'completed' && (
-          <Card className="p-6 text-center bg-gradient-to-r from-eco-green to-forest-green text-white">
-            <h3 className="text-xl font-bold mb-2">Quest Completed! 🎉</h3>
-            <p className="mb-4">Congratulations on completing your eco-adventure!</p>
-            <div className="text-lg font-semibold">
-              Total Points Earned: {hunt.totalPoints}
-            </div>
-          </Card>
-        )}
+        </Card>
       </div>
-
-      {/* Photo Capture Modal */}
-      <PhotoCapture
-        isOpen={isPhotoModalOpen}
-        onClose={() => setIsPhotoModalOpen(false)}
-        onSubmit={handlePhotoSubmit}
-        prompt="Capture Your Find"
-      />
     </Layout>
   );
 }
