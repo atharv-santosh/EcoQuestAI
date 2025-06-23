@@ -204,16 +204,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a demo user for testing
   app.post("/api/users/demo", async (req, res) => {
     try {
+      const newId = `demo_user_${Date.now()}`;
+      const existing = await storage.getUser(newId);
+      if (existing) {
+        console.log(`[DEMO USER] User with ID ${newId} already exists!`);
+      } else {
+        console.log(`[DEMO USER] Creating new demo user with ID: ${newId}`);
+      }
       const demoUser = await storage.upsertUser({
-        id: `demo_user_${Date.now()}`,
+        id: newId,
         email: `demo${Date.now()}@example.com`,
         firstName: "Demo",
         lastName: "User"
       });
-      
       // Award some initial points
       await storage.updateUserPoints(demoUser.id, 127);
-      
       res.json(demoUser);
     } catch (error) {
       console.error("Error creating demo user:", error);
