@@ -73,3 +73,4 @@ replit.nix
 # Temporary folders
 tmp/
 temp/
+.vercel

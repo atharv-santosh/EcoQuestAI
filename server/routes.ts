@@ -17,14 +17,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Check if user has an active hunt
-      const activeHunt = await storage.getActiveHunt(userId);
-      if (activeHunt) {
-        return res.status(409).json({ 
-          message: "You already have an active hunt. Complete it first." 
-        });
-      }
-
       // Get address if not provided
       let address = location.address;
       if (!address) {
@@ -69,11 +61,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.params.userId;
       const hunt = await storage.getActiveHunt(userId);
-      
+      console.log(`[ACTIVE HUNT] Requested userId: ${userId}`);
+      if (hunt) {
+        console.log(`[ACTIVE HUNT] Returning hunt with id: ${hunt.id}, userId: ${hunt.userId}`);
+      } else {
+        console.log(`[ACTIVE HUNT] No active hunt found for userId: ${userId}`);
+      }
       if (!hunt) {
         return res.status(404).json({ message: "No active hunt found" });
       }
-      
       res.json(hunt);
     } catch (error) {
       console.error("Error fetching active hunt:", error);
@@ -204,7 +200,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a demo user for testing
   app.post("/api/users/demo", async (req, res) => {
     try {
-      const newId = `demo_user_${Date.now()}`;
+      const randomStr = Math.random().toString(36).slice(2, 10);
+      const newId = `demo_user_${Date.now()}_${randomStr}`;
       const existing = await storage.getUser(newId);
       if (existing) {
         console.log(`[DEMO USER] User with ID ${newId} already exists!`);
@@ -217,12 +214,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstName: "Demo",
         lastName: "User"
       });
-      // Award some initial points
       await storage.updateUserPoints(demoUser.id, 127);
       res.json(demoUser);
     } catch (error) {
       console.error("Error creating demo user:", error);
       res.status(500).json({ message: "Failed to create demo user" });
+    }
+  });
+
+  // Delete all hunts for a user (manual reset)
+  app.delete('/api/hunts/reset/:userId', async (req, res) => {
+    try {
+      const userId = req.params.userId;
+      const { db } = require('./db');
+      const { hunts } = require('../shared/schema');
+      await db.delete(hunts).where(hunts.userId.eq(userId));
+      res.json({ message: `All hunts for user ${userId} deleted.` });
+    } catch (error) {
+      console.error('Error deleting hunts:', error);
+      res.status(500).json({ message: 'Failed to delete hunts.' });
+    }
+  });
+
+  // Get hunt by ID
+  app.get("/api/hunts/:huntId", async (req, res) => {
+    try {
+      const huntId = parseInt(req.params.huntId);
+      const hunt = await storage.getHunt(huntId);
+      if (!hunt) {
+        return res.status(404).json({ message: "Hunt not found" });
+      }
+      res.json(hunt);
+    } catch (error) {
+      console.error("Error fetching hunt by ID:", error);
+      res.status(500).json({ message: "Failed to fetch hunt" });
     }
   });
 

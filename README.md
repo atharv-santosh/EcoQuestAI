@@ -1,45 +1,81 @@
-# EcoQuest AI
+# EcoQuestAI
 
-An AI-powered mobile-first Progressive Web App that generates custom eco-friendly scavenger hunts in local areas.
+An eco-adventure mobile app built with React Native and Expo, featuring quests, badges, and sustainable exploration.
 
-## Running the Application
+## 🚀 Quick Start
 
-### Web App (Primary)
+### Mobile App (Expo)
 ```bash
-npm install
+cd mobile/app
+npx expo start
+```
+
+### Backend Server
+```bash
 npm run dev
 ```
-The app will be available at http://localhost:5000
 
-### Mobile App (React Native)
-```bash
-cd mobile
-npm install
-npm start
+## 📱 Project Structure
+
+```
+EcoQuestAI/
+├── mobile/
+│   └── app/                    # 🎯 Main Expo app
+│       ├── App.tsx            # Entry point
+│       ├── src/
+│       │   ├── screens/       # All app screens
+│       │   └── services/      # API & auth services
+│       └── package.json       # Expo dependencies
+│
+├── server/                    # Backend API (Node.js/Express)
+├── client/                    # Web version (React)
+└── shared/                    # Shared types & schemas
 ```
 
-## Project Structure
+## ✨ Features
 
-- `/client` - React web application (PWA)
-- `/server` - Express.js backend API
-- `/mobile` - React Native mobile app
-- `/shared` - Shared TypeScript types and schemas
+- **Google OAuth Login** - Secure authentication
+- **Eco Quests** - Location-based challenges
+- **Badge System** - Achievement tracking
+- **Explore Map** - Discover green spaces
+- **Modern UI** - Polished design with gradients
 
-## Features
+## 🔧 Setup
 
-- 4 eco-adventure themes (Urban Nature, Sustainable Shopping, Pollinator Hunt, Zero-Waste Picnic)
-- AI-generated routes with 5-7 stops
-- Interactive challenges (photo, trivia, tasks)
-- Google Maps integration
-- Achievement system
-- PWA with offline capabilities
+1. **Install dependencies**:
+   ```bash
+   # Mobile app
+   cd mobile/app && npm install
+   
+   # Backend
+   npm install
+   ```
 
-## Environment Variables
+2. **Configure Google OAuth** (see `GOOGLE_OAUTH_SETUP.md`)
 
-Required:
-- `DATABASE_URL` - PostgreSQL database connection
-- `GOOGLE_MAPS_API_KEY` - For map functionality
-- `SESSION_SECRET` - For user sessions
+3. **Start development**:
+   ```bash
+   # Terminal 1: Backend
+   npm run dev
+   
+   # Terminal 2: Mobile app
+   cd mobile/app && npx expo start
+   ```
 
-Optional:
-- `OPENAI_API_KEY` - For AI route generation
+## 📱 Running the App
+
+- **Expo Go**: Scan QR code with Expo Go app
+- **iOS Simulator**: Press `i` in Expo CLI
+- **Android Emulator**: Press `a` in Expo CLI
+
+## 🚀 Deployment
+
+- **Mobile**: Use Expo's build service or distribute via Expo Go
+- **Backend**: Deploy to Vercel (see `DEPLOYMENT.md`)
+- **Database**: Use Neon PostgreSQL
+
+## 📄 Documentation
+
+- [Google OAuth Setup](GOOGLE_OAUTH_SETUP.md)
+- [Deployment Guide](DEPLOYMENT.md)
+- [Mobile Deployment](MOBILE_DEPLOYMENT.md)
