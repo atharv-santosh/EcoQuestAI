@@ -9,6 +9,7 @@ export interface User {
   experience: number;
   totalQuests: number;
   totalBadges: number;
+  gems: number;
 }
 
 export interface LocationData {
@@ -109,6 +110,7 @@ export type RootStackParamList = {
   Main: undefined;
   QuestDetail: { questId: string; capturedImage?: string };
   Camera: { questId: string };
+  Shop: undefined;
 };
 
 export type MainTabParamList = {

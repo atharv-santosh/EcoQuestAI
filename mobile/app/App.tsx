@@ -23,6 +23,7 @@ import BadgesScreen from './src/screens/BadgesScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import QuestDetailScreen from './src/screens/QuestDetailScreen';
 import CameraScreen from './src/screens/CameraScreen';
+import ShopScreen from './src/screens/ShopScreen';
 
 // Import types
 import { RootStackParamList, MainTabParamList } from './src/types';
@@ -139,6 +140,11 @@ function AppContent() {
                 headerShown: false,
                 presentation: 'modal',
               }}
+            />
+            <Stack.Screen 
+              name="Shop" 
+              component={ShopScreen}
+              options={{ title: 'Shop' }}
             />
           </>
         ) : (

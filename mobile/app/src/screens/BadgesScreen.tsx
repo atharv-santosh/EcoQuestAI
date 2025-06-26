@@ -1,16 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Image,
+  Alert,
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import Icon from 'react-native-vector-icons/Ionicons';
 import { useBadge } from '../contexts/BadgeContext';
 import { useAuth } from '../contexts/AuthContext';
+import UserHeader from '../components/UserHeader';
 
 const { width } = Dimensions.get('window');
 
@@ -99,7 +103,7 @@ export default function BadgesScreen() {
         
         {!badge.unlocked && (
           <View style={styles.requirementsContainer}>
-            <Ionicons name="information-circle" size={16} color="#9ca3af" />
+            <Icon name="information-circle" size={16} color="#9ca3af" />
             <Text style={styles.requirementsText}>{badge.requirements.description}</Text>
           </View>
         )}
@@ -109,63 +113,60 @@ export default function BadgesScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Badges</Text>
-        <Text style={styles.headerSubtitle}>
-          {unlockedCount} of {totalCount} badges unlocked
-        </Text>
-      </View>
-
-      {/* Progress Bar */}
-      <View style={styles.progressContainer}>
-        <View style={styles.progressHeader}>
-          <Text style={styles.progressTitle}>Collection Progress</Text>
-          <Text style={styles.progressText}>{Math.round(progressPercentage)}%</Text>
-        </View>
-        <View style={styles.progressBar}>
-          <View
-            style={[styles.progressFill, { width: `${progressPercentage}%` }]}
-          />
-        </View>
-      </View>
-
-      {/* Category Filter */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.categoryContainer}
-        contentContainerStyle={styles.categoryContent}
-      >
-        {categories.map((category) => (
-          <TouchableOpacity
-            key={category.id}
-            style={[
-              styles.categoryButton,
-              selectedCategory === category.id && styles.categoryButtonActive
-            ]}
-            onPress={() => setSelectedCategory(category.id)}
-          >
-            <Ionicons
-              name={category.icon as any}
-              size={20}
-              color={selectedCategory === category.id ? '#059669' : '#6b7280'}
+      <UserHeader />
+      
+      {/* Filter Tabs */}
+      <View style={styles.filterContainer}>
+        {/* Progress Bar */}
+        <View style={styles.progressContainer}>
+          <View style={styles.progressHeader}>
+            <Text style={styles.progressTitle}>Collection Progress</Text>
+            <Text style={styles.progressText}>{Math.round(progressPercentage)}%</Text>
+          </View>
+          <View style={styles.progressBar}>
+            <View
+              style={[styles.progressFill, { width: `${progressPercentage}%` }]}
             />
-            <Text style={[
-              styles.categoryText,
-              selectedCategory === category.id && styles.categoryTextActive
-            ]}>
-              {category.name}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+          </View>
+        </View>
+
+        {/* Category Filter */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.categoryContainer}
+          contentContainerStyle={styles.categoryContent}
+        >
+          {categories.map((category) => (
+            <TouchableOpacity
+              key={category.id}
+              style={[
+                styles.categoryButton,
+                selectedCategory === category.id && styles.categoryButtonActive
+              ]}
+              onPress={() => setSelectedCategory(category.id)}
+            >
+              <Icon
+                name={category.icon as any}
+                size={20}
+                color={selectedCategory === category.id ? '#059669' : '#6b7280'}
+              />
+              <Text style={[
+                styles.categoryText,
+                selectedCategory === category.id && styles.categoryTextActive
+              ]}>
+                {category.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
       {/* Badges Grid */}
       <ScrollView style={styles.badgesContainer} showsVerticalScrollIndicator={false}>
         {filteredBadges.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name="trophy-outline" size={64} color="#9ca3af" />
+            <Icon name="trophy-outline" size={64} color="#9ca3af" />
             <Text style={styles.emptyStateTitle}>No Badges Found</Text>
             <Text style={styles.emptyStateText}>
               {selectedCategory === 'all'
@@ -212,26 +213,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f8fafc',
   },
-  header: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#374151',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 4,
+  filterContainer: {
+    padding: 16,
   },
   progressContainer: {
     backgroundColor: 'white',
-    marginHorizontal: 16,
     marginTop: 16,
     padding: 16,
     borderRadius: 12,

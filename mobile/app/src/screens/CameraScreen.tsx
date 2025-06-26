@@ -10,48 +10,51 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Camera, CameraType } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 
 export default function CameraScreen({ route, navigation }: any) {
-  const { questId } = route.params;
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
-  const [type, setType] = useState(CameraType.back);
-  const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  const [flash, setFlash] = useState(Camera.Constants.FlashMode.off);
-  const cameraRef = useRef<Camera>(null);
-
-  useEffect(() => {
-    (async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      setHasPermission(status === 'granted');
-    })();
-  }, []);
+  const { questId, capturedImage: initialImage } = route.params || {};
+  const [capturedImage, setCapturedImage] = useState<string | null>(initialImage || null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const takePicture = async () => {
-    if (cameraRef.current) {
-      try {
-        const photo = await cameraRef.current.takePictureAsync({
-          quality: 0.8,
-          base64: true,
-        });
-        setCapturedImage(photo.uri);
-      } catch (error) {
-        Alert.alert('Error', 'Failed to take picture');
+    try {
+      setIsProcessing(true);
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setCapturedImage(result.assets[0].uri);
       }
+    } catch (error) {
+      console.error('Error taking picture:', error);
+      Alert.alert('Error', 'Failed to take picture. Please try again.');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.8,
-    });
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+        base64: true,
+      });
 
-    if (!result.canceled) {
-      setCapturedImage(result.assets[0].uri);
+      if (!result.canceled && result.assets[0]) {
+        setCapturedImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
     }
   };
 
@@ -60,53 +63,13 @@ export default function CameraScreen({ route, navigation }: any) {
   };
 
   const usePicture = () => {
-    navigation.navigate('QuestDetail', { 
-      questId,
-      capturedImage: capturedImage 
-    });
+    if (capturedImage) {
+      navigation.navigate('QuestDetail', { 
+        questId,
+        capturedImage: capturedImage 
+      });
+    }
   };
-
-  const toggleCameraType = () => {
-    setType(current => (current === CameraType.back ? CameraType.front : CameraType.back));
-  };
-
-  const toggleFlash = () => {
-    setFlash(current => 
-      current === Camera.Constants.FlashMode.off 
-        ? Camera.Constants.FlashMode.on 
-        : Camera.Constants.FlashMode.off
-    );
-  };
-
-  if (hasPermission === null) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Requesting camera permission...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (hasPermission === false) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.permissionContainer}>
-          <Ionicons name="camera-off" size={64} color="#9ca3af" />
-          <Text style={styles.permissionTitle}>Camera Access Required</Text>
-          <Text style={styles.permissionText}>
-            This app needs camera access to take photos for quests. Please enable camera permissions in your device settings.
-          </Text>
-          <TouchableOpacity
-            style={styles.permissionButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.permissionButtonText}>Go Back</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   if (capturedImage) {
     return (
@@ -138,7 +101,7 @@ export default function CameraScreen({ route, navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Camera style={styles.camera} type={type} ref={cameraRef} flashMode={flash}>
+      <View style={styles.cameraContainer}>
         <View style={styles.cameraHeader}>
           <TouchableOpacity
             style={styles.headerButton}
@@ -147,24 +110,17 @@ export default function CameraScreen({ route, navigation }: any) {
             <Ionicons name="close" size={24} color="#fff" />
           </TouchableOpacity>
           
-          <View style={styles.headerControls}>
-            <TouchableOpacity
-              style={styles.headerButton}
-              onPress={toggleFlash}
-            >
-              <Ionicons 
-                name={flash === Camera.Constants.FlashMode.on ? "flash" : "flash-off"} 
-                size={24} 
-                color="#fff" 
-              />
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={styles.headerButton}
-              onPress={toggleCameraType}
-            >
-              <Ionicons name="camera-reverse" size={24} color="#fff" />
-            </TouchableOpacity>
+          <Text style={styles.headerTitle}>Take Photo</Text>
+          
+          <View style={styles.placeholder} />
+        </View>
+
+        <View style={styles.cameraContent}>
+          <View style={styles.cameraPlaceholder}>
+            <Ionicons name="camera" size={64} color="#9ca3af" />
+            <Text style={styles.cameraPlaceholderText}>
+              Camera functionality will be implemented here
+            </Text>
           </View>
         </View>
 
@@ -179,16 +135,21 @@ export default function CameraScreen({ route, navigation }: any) {
             </TouchableOpacity>
             
             <TouchableOpacity
-              style={styles.captureButton}
+              style={[styles.captureButton, isProcessing && styles.captureButtonDisabled]}
               onPress={takePicture}
+              disabled={isProcessing}
             >
-              <View style={styles.captureButtonInner} />
+              {isProcessing ? (
+                <Ionicons name="hourglass" size={32} color="#fff" />
+              ) : (
+                <View style={styles.captureButtonInner} />
+              )}
             </TouchableOpacity>
             
             <View style={styles.placeholder} />
           </View>
         </View>
-      </Camera>
+      </View>
     </SafeAreaView>
   );
 }
@@ -198,47 +159,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000',
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    color: '#fff',
-    fontSize: 16,
-  },
-  permissionContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-  },
-  permissionTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#374151',
-    marginTop: 16,
-    marginBottom: 12,
-  },
-  permissionText: {
-    fontSize: 16,
-    color: '#6b7280',
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 24,
-  },
-  permissionButton: {
-    backgroundColor: '#059669',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  permissionButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  camera: {
+  cameraContainer: {
     flex: 1,
   },
   cameraHeader: {
@@ -257,9 +178,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerControls: {
-    flexDirection: 'row',
-    gap: 12,
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  cameraContent: {
+    flex: 1,
+  },
+  cameraPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cameraPlaceholderText: {
+    color: '#9ca3af',
+    fontSize: 16,
+    textAlign: 'center',
   },
   cameraFooter: {
     position: 'absolute',
@@ -297,6 +232,10 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
     backgroundColor: '#fff',
+  },
+  captureButtonDisabled: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   placeholder: {
     width: 44,

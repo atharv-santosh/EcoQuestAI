@@ -10,6 +10,7 @@ import {
   Image,
   Platform,
   RefreshControl,
+  Animated,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {LinearGradient} from 'expo-linear-gradient';
@@ -20,6 +21,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getActiveHunt, getHuntById } from '../services/api';
 import { useQuest } from '../contexts/QuestContext';
 import { useLocation } from '../contexts/LocationContext';
+import UserHeader from '../components/UserHeader';
 
 // Conditionally import MapView only on native platforms
 let MapView: any = null;
@@ -47,48 +49,29 @@ interface Stop {
 
 export default function HuntScreen({ navigation }: any) {
   const route = useRoute<any>();
-  const { activeQuests, completedQuests, loading, generateNearbyQuests } = useQuest();
+  const { activeQuests, completedQuests, loading, generateNearbyQuests, deleteQuest } = useQuest();
   const { location, requestPermission } = useLocation();
   const { user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
-  const [hunt, setHunt] = useState<any>(null);
-  const [currentStop, setCurrentStop] = useState(0);
-  const [completedStops, setCompletedStops] = useState<string[]>([]);
-  const [totalPoints, setTotalPoints] = useState(0);
-  const [showCamera, setShowCamera] = useState(false);
-  const [photos, setPhotos] = useState<Record<string, {id: number; uri: string}>>({});
-
-  useEffect(() => {
-    const fetchHunt = async () => {
-      setLoading(true);
-      try {
-        const huntId = route.params?.huntId;
-        let huntData;
-        if (huntId) {
-          const response = await getHuntById(huntId);
-          huntData = response.data;
-        } else {
-          throw new Error('No huntId provided');
-        }
-        setHunt(huntData);
-        setCompletedStops(huntData.stops.filter((s: any) => s.completed).map((s: any) => s.id));
-        setTotalPoints(huntData.stops.filter((s: any) => s.completed).reduce((sum: number, s: any) => sum + (s.points || 0), 0));
-      } catch (err) {
-        setHunt(null);
-        Alert.alert('Error', 'Could not load quest.');
-        navigation.goBack();
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (user) fetchHunt();
-  }, [user, route.params]);
+  const [showCompletedQuests, setShowCompletedQuests] = useState(false);
+  const [dropdownAnimation] = useState(new Animated.Value(0));
 
   useEffect(() => {
     if (!location) {
       requestPermission();
     }
   }, []);
+
+  const toggleCompletedQuests = () => {
+    const toValue = showCompletedQuests ? 0 : 1;
+    setShowCompletedQuests(!showCompletedQuests);
+    
+    Animated.timing(dropdownAnimation, {
+      toValue,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  };
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -100,6 +83,42 @@ export default function HuntScreen({ navigation }: any) {
 
   const handleQuestPress = (questId: string) => {
     navigation.navigate('QuestDetail', { questId });
+  };
+
+  const handleDeleteQuest = async (questId: string) => {
+    if (!user) return;
+
+    const gemCost = 5;
+    
+    if (user.gems < gemCost) {
+      Alert.alert(
+        'Insufficient Gems',
+        `You need ${gemCost} gems to delete this quest. Would you like to visit the shop?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Go to Shop', onPress: () => navigation.navigate('Shop') }
+        ]
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Delete Quest',
+      'Are you sure you want to delete this quest? This will cost 5 gems.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            const success = await deleteQuest(questId);
+            if (success) {
+              Alert.alert('Quest Deleted', 'Quest has been removed and 5 gems deducted.');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const getCategoryIcon = (category: string) => {
@@ -174,6 +193,17 @@ export default function HuntScreen({ navigation }: any) {
               <Icon name="checkmark-circle" size={16} color="#10b981" />
             </View>
           )}
+          {!isCompleted && (
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleDeleteQuest(quest.id);
+              }}
+            >
+              <Icon name="close-circle" size={20} color="#ef4444" />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -200,7 +230,7 @@ export default function HuntScreen({ navigation }: any) {
     </TouchableOpacity>
   );
 
-  if (loading || !hunt) {
+  if (loading || !activeQuests.length) {
     return (
       <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
         <Text>Loading quest...</Text>
@@ -208,80 +238,14 @@ export default function HuntScreen({ navigation }: any) {
     );
   }
 
-  const handleStopComplete = (stopId: string, points: number) => {
-    if (!completedStops.includes(stopId)) {
-      setCompletedStops([...completedStops, stopId]);
-      setTotalPoints(totalPoints + points);
-      
-      Alert.alert(
-        'Stop Completed!',
-        `You earned ${points} points!`,
-        [
-          {
-            text: 'Continue',
-            onPress: () => {
-              if (currentStop < hunt.stops.length - 1) {
-                setCurrentStop(currentStop + 1);
-              } else {
-                Alert.alert(
-                  'Quest Complete!',
-                  `Congratulations! You earned ${totalPoints + points} total points.`,
-                  [{text: 'Return Home', onPress: () => navigation.goBack()}]
-                );
-              }
-            }
-          }
-        ]
-      );
-    }
-  };
-
-  const handleTakePhoto = async (locationId: string) => {
-    const {status} = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert(
-        'Permission Denied',
-        'You need to grant camera access to complete photo challenges.',
-      );
-      return;
-    }
-
-    let result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.5,
-    });
-
-    if (!result.canceled) {
-      const newPhoto = {
-        id: Date.now(),
-        uri: result.assets[0].uri,
-      };
-      setPhotos(prev => ({
-        ...prev,
-        [locationId]: newPhoto,
-      }));
-      handleStopComplete(locationId, hunt.stops[currentStop].points);
-    }
-  };
-
-  const handleTriviaAnswer = (answer: string) => {
-    const stop = hunt.stops[currentStop];
-    if (answer === stop.challenge.correctAnswer) {
-      handleStopComplete(stop.id, stop.points);
-    } else {
-      Alert.alert('Incorrect', 'Try again!');
-    }
-  };
-
-  const currentStopData = hunt.stops[currentStop];
-
   return (
     <SafeAreaView style={styles.container}>
+      <UserHeader />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Quest Hunt</Text>
         <Text style={styles.headerSubtitle}>
-          {activeQuests.length} active • {completedQuests.length} completed
+          {activeQuests.length} active quests
+          {completedQuests.length > 0 && ` • ${completedQuests.length} completed`}
         </Text>
       </View>
 
@@ -304,10 +268,48 @@ export default function HuntScreen({ navigation }: any) {
         {/* Completed Quests */}
         {completedQuests.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Completed Quests</Text>
-            {completedQuests.map((quest) => (
-              <QuestCard key={quest.id} quest={quest} isCompleted={true} />
-            ))}
+            <TouchableOpacity
+              style={[styles.dropdownHeader, showCompletedQuests && styles.dropdownHeaderExpanded]}
+              onPress={toggleCompletedQuests}
+              activeOpacity={0.7}
+            >
+              <View style={styles.dropdownHeaderContent}>
+                <Text style={styles.sectionTitle}>Completed Quests</Text>
+                <Text style={styles.completedCount}>({completedQuests.length})</Text>
+              </View>
+              <Animated.View
+                style={[
+                  styles.dropdownIcon,
+                  {
+                    transform: [{
+                      rotate: dropdownAnimation.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['0deg', '180deg'],
+                      }),
+                    }],
+                  },
+                ]}
+              >
+                <Icon name="chevron-down" size={20} color="#6b7280" />
+              </Animated.View>
+            </TouchableOpacity>
+            
+            <Animated.View
+              style={[
+                styles.dropdownContent,
+                {
+                  maxHeight: dropdownAnimation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, completedQuests.length * 200], // Approximate height per quest
+                  }),
+                  opacity: dropdownAnimation,
+                },
+              ]}
+            >
+              {completedQuests.map((quest) => (
+                <QuestCard key={quest.id} quest={quest} isCompleted={true} />
+              ))}
+            </Animated.View>
           </View>
         )}
 
@@ -553,5 +555,37 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6b7280',
     marginTop: 4,
+  },
+  deleteButton: {
+    marginLeft: 8,
+  },
+  dropdownHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 0,
+    marginBottom: 16,
+  },
+  dropdownHeaderContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  completedCount: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginLeft: 8,
+    fontWeight: '500',
+  },
+  dropdownIcon: {
+    marginLeft: 8,
+  },
+  dropdownContent: {
+    overflow: 'hidden',
+  },
+  dropdownHeaderExpanded: {
+    backgroundColor: '#f9fafb',
+    borderRadius: 8,
+    paddingHorizontal: 12,
   },
 });

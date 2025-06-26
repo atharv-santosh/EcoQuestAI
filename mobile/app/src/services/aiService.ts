@@ -28,10 +28,11 @@ class AIService {
   async analyzeImage(imageBase64: string, requirement: QuestRequirement): Promise<ImageAnalysisResult> {
     try {
       if (!this.apiKey) {
-        // Fallback to basic analysis for demo
+        console.log('No OpenAI API key found, using fallback analysis');
         return this.fallbackAnalysis(requirement);
       }
 
+      console.log('Starting AI image analysis...');
       const prompt = this.buildAnalysisPrompt(requirement);
       
       const response = await fetch(this.apiUrl, {
@@ -59,18 +60,25 @@ class AIService {
               ],
             },
           ],
-          max_tokens: 300,
+          max_tokens: 500,
+          temperature: 0.1, // Lower temperature for more consistent results
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`API request failed: ${response.status}`);
+        const errorText = await response.text();
+        console.error('OpenAI API error:', response.status, errorText);
+        throw new Error(`API request failed: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();
-      const analysis = data.choices[0].message.content;
+      console.log('AI response received:', data.choices[0].message.content);
       
-      return this.parseAnalysisResult(analysis, requirement);
+      const analysis = data.choices[0].message.content;
+      const result = this.parseAnalysisResult(analysis, requirement);
+      
+      console.log('Parsed AI result:', result);
+      return result;
     } catch (error) {
       console.error('AI analysis error:', error);
       return this.fallbackAnalysis(requirement);
@@ -78,24 +86,31 @@ class AIService {
   }
 
   private buildAnalysisPrompt(requirement: QuestRequirement): string {
-    const basePrompt = `Analyze this image for a quest requirement. 
-    
-Quest Description: ${requirement.description}
+    const basePrompt = `You are an expert image analyzer for an eco-friendly quest app. Analyze this image carefully for the following quest requirement:
 
-Please analyze the image and respond with:
-1. A confidence score (0-100) indicating how well the image matches the requirement
-2. A list of detected objects/features in the image
-3. A simple "YES" or "NO" indicating if the quest requirement is met
+QUEST REQUIREMENT: ${requirement.description}
 
-Format your response as:
-Confidence: [score]
-Objects: [comma-separated list]
-Match: [YES/NO]`;
+INSTRUCTIONS:
+1. Look at the image carefully and identify all relevant objects, features, and elements
+2. Determine if the image matches the quest requirement
+3. Provide a confidence score based on how well the image fulfills the requirement
+4. List all detected objects/features that are relevant to the quest
 
-    if (requirement.targetObjects) {
+RESPONSE FORMAT (exactly as shown):
+Confidence: [0-100]
+Objects: [comma-separated list of detected objects/features]
+Match: [YES/NO]
+
+EXAMPLES:
+- For a nature quest asking for trees: "Confidence: 85\nObjects: oak tree, green leaves, natural environment\nMatch: YES"
+- For a sustainability quest asking for recycling bins: "Confidence: 20\nObjects: building, sidewalk, people\nMatch: NO"
+
+Be specific and accurate in your analysis.`;
+
+    if (requirement.targetObjects && requirement.targetObjects.length > 0) {
       return `${basePrompt}
 
-Specifically look for these objects: ${requirement.targetObjects.join(', ')}`;
+SPECIFIC OBJECTS TO LOOK FOR: ${requirement.targetObjects.join(', ')}`;
     }
 
     return basePrompt;
@@ -103,19 +118,46 @@ Specifically look for these objects: ${requirement.targetObjects.join(', ')}`;
 
   private parseAnalysisResult(analysis: string, requirement: QuestRequirement): ImageAnalysisResult {
     try {
-      const confidenceMatch = analysis.match(/Confidence:\s*(\d+)/);
-      const objectsMatch = analysis.match(/Objects:\s*(.+)/);
-      const matchMatch = analysis.match(/Match:\s*(YES|NO)/);
+      console.log('Parsing AI response:', analysis);
+      
+      // More flexible regex patterns to handle variations in AI responses
+      const confidenceMatch = analysis.match(/Confidence:\s*(\d+)/i);
+      const objectsMatch = analysis.match(/Objects:\s*(.+?)(?:\n|$)/i);
+      const matchMatch = analysis.match(/Match:\s*(YES|NO)/i);
 
-      const confidence = confidenceMatch ? parseInt(confidenceMatch[1]) : 50;
-      const detectedObjects = objectsMatch ? objectsMatch[1].split(',').map(obj => obj.trim()) : [];
-      const isMatch = matchMatch ? matchMatch[1] === 'YES' : false;
+      let confidence = 50; // Default confidence
+      let detectedObjects: string[] = [];
+      let isMatch = false;
 
-      return {
+      if (confidenceMatch) {
+        confidence = parseInt(confidenceMatch[1]);
+        confidence = Math.max(0, Math.min(100, confidence)); // Clamp between 0-100
+      }
+
+      if (objectsMatch) {
+        detectedObjects = objectsMatch[1]
+          .split(',')
+          .map(obj => obj.trim())
+          .filter(obj => obj.length > 0);
+      }
+
+      if (matchMatch) {
+        isMatch = matchMatch[1].toUpperCase() === 'YES';
+      }
+
+      // If we couldn't parse the match, use confidence as a fallback
+      if (matchMatch === null) {
+        isMatch = confidence >= 70;
+      }
+
+      const result: ImageAnalysisResult = {
         success: true,
         confidence,
         detectedObjects,
       };
+
+      console.log('Parsed result:', result);
+      return result;
     } catch (error) {
       console.error('Error parsing analysis result:', error);
       return this.fallbackAnalysis(requirement);
@@ -125,24 +167,54 @@ Specifically look for these objects: ${requirement.targetObjects.join(', ')}`;
   private fallbackAnalysis(requirement: QuestRequirement): ImageAnalysisResult {
     // Fallback analysis for when AI service is not available
     // This provides a basic simulation of image analysis
+    console.log('Using fallback analysis - no AI available');
     
-    const randomConfidence = Math.floor(Math.random() * 40) + 60; // 60-100
-    const isMatch = randomConfidence > 70;
+    // Generate more realistic confidence based on quest type
+    let baseConfidence = 60;
+    const questText = requirement.description.toLowerCase();
     
+    if (questText.includes('tree') || questText.includes('plant') || questText.includes('nature')) {
+      baseConfidence = 75;
+    } else if (questText.includes('recycling') || questText.includes('sustainable')) {
+      baseConfidence = 45;
+    } else if (questText.includes('building') || questText.includes('architecture')) {
+      baseConfidence = 65;
+    }
+    
+    const randomVariation = Math.floor(Math.random() * 30) - 15; // ±15 variation
+    const confidence = Math.max(0, Math.min(100, baseConfidence + randomVariation));
+    
+    // Generate relevant objects based on quest type
+    let relevantObjects: string[] = [];
+    if (questText.includes('tree') || questText.includes('plant')) {
+      relevantObjects = ['tree', 'leaves', 'green vegetation', 'natural environment'];
+    } else if (questText.includes('recycling') || questText.includes('sustainable')) {
+      relevantObjects = ['building', 'sidewalk', 'urban environment'];
+    } else if (questText.includes('building') || questText.includes('architecture')) {
+      relevantObjects = ['building', 'architecture', 'urban structure'];
+    } else {
+      relevantObjects = ['environment', 'surroundings', 'location'];
+    }
+    
+    // Add some random objects for variety
     const commonObjects = [
-      'tree', 'plant', 'flower', 'leaf', 'grass', 'sky', 'building', 
-      'car', 'person', 'animal', 'water', 'mountain', 'road', 'bench'
+      'sky', 'ground', 'people', 'road', 'car', 'bench', 'sign', 'light'
     ];
     
-    const detectedObjects = commonObjects
+    const additionalObjects = commonObjects
       .sort(() => 0.5 - Math.random())
-      .slice(0, Math.floor(Math.random() * 5) + 2);
+      .slice(0, Math.floor(Math.random() * 3) + 1);
+    
+    const detectedObjects = [...relevantObjects, ...additionalObjects];
 
-    return {
+    const result: ImageAnalysisResult = {
       success: true,
-      confidence: randomConfidence,
+      confidence,
       detectedObjects,
     };
+    
+    console.log('Fallback analysis result:', result);
+    return result;
   }
 
   // Generate quest descriptions using AI
@@ -239,6 +311,68 @@ Specifically look for these objects: ${requirement.targetObjects.join(', ')}`;
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
     return R * c;
+  }
+
+  // Test AI connectivity
+  async testAIConnection(): Promise<{ success: boolean; message: string }> {
+    try {
+      if (!this.apiKey) {
+        return {
+          success: false,
+          message: 'No OpenAI API key found. Add EXPO_PUBLIC_OPENAI_API_KEY to your .env file'
+        };
+      }
+
+      console.log('Testing AI connection...');
+      
+      const response = await fetch(this.apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'gpt-3.5-turbo',
+          messages: [
+            {
+              role: 'user',
+              content: 'Respond with "AI is working" if you can see this message.',
+            },
+          ],
+          max_tokens: 10,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return {
+          success: false,
+          message: `API test failed: ${response.status} - ${errorText}`
+        };
+      }
+
+      const data = await response.json();
+      console.log('AI connection test successful');
+      
+      return {
+        success: true,
+        message: 'AI connection successful! Photo detection will use real AI analysis.'
+      };
+    } catch (error) {
+      console.error('AI connection test error:', error);
+      return {
+        success: false,
+        message: `Connection test failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
+    }
+  }
+
+  // Get AI status
+  getAIStatus(): { hasApiKey: boolean; isConfigured: boolean } {
+    return {
+      hasApiKey: !!this.apiKey,
+      isConfigured: this.apiKey.length > 0
+    };
   }
 }
 

@@ -15,6 +15,8 @@ interface QuestContextType {
   completeQuest: (questId: string, photoData?: string) => Promise<boolean>;
   submitPhoto: (questId: string, imageBase64: string) => Promise<boolean>;
   resetQuests: () => Promise<void>;
+  deleteQuest: (questId: string) => Promise<boolean>;
+  canGenerateQuests: () => boolean;
 }
 
 const QuestContext = createContext<QuestContextType | undefined>(undefined);
@@ -86,13 +88,22 @@ export const QuestProvider: React.FC<QuestProviderProps> = ({ children }) => {
   const generateNearbyQuests = async () => {
     if (!location || !user) return;
 
+    // Check if we already have 3 active quests
+    if (activeQuests.length >= 3) {
+      setError('You can only have 3 active quests at a time. Complete or delete some quests first.');
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
 
       // Generate mock quests for now
       const mockQuests = generateMockQuests(location);
-      setQuests(mockQuests);
+      
+      // Only add quests up to the limit of 3
+      const questsToAdd = mockQuests.slice(0, 3 - activeQuests.length);
+      setQuests([...quests, ...questsToAdd]);
     } catch (error) {
       console.error('Error generating nearby quests:', error);
       setError('Failed to generate quests');
@@ -275,8 +286,39 @@ export const QuestProvider: React.FC<QuestProviderProps> = ({ children }) => {
     }
   };
 
+  const deleteQuest = async (questId: string): Promise<boolean> => {
+    if (!user) return false;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const updatedQuests = quests.filter(q => q.id !== questId);
+      setQuests(updatedQuests);
+
+      // Update user stats - deduct 5 gems
+      if (user) {
+        updateUser({
+          gems: user.gems - 5,
+        });
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error deleting quest:', error);
+      setError('Failed to delete quest');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const activeQuests = quests.filter(quest => !quest.completed);
   const completedQuests = quests.filter(quest => quest.completed);
+
+  const canGenerateQuests = (): boolean => {
+    return Boolean(user && location && activeQuests.length < 3);
+  };
 
   const value: QuestContextType = {
     quests,
@@ -288,6 +330,8 @@ export const QuestProvider: React.FC<QuestProviderProps> = ({ children }) => {
     completeQuest,
     submitPhoto,
     resetQuests,
+    deleteQuest,
+    canGenerateQuests,
   };
 
   return (

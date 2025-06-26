@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useBadge } from '../contexts/BadgeContext';
 import { useQuest } from '../contexts/QuestContext';
+import UserHeader from '../components/UserHeader';
 
 export default function ProfileScreen({ navigation }: any) {
   const { user, signOut } = useAuth();
@@ -107,22 +108,7 @@ export default function ProfileScreen({ navigation }: any) {
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView}>
         {/* Profile Header */}
-        <View style={styles.profileHeader}>
-          <Image source={{ uri: user?.picture }} style={styles.profileImage} />
-          <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{user?.name}</Text>
-            <Text style={styles.profileEmail}>{user?.email}</Text>
-            <View style={styles.levelContainer}>
-              <Text style={styles.levelText}>Level {user?.level || 1}</Text>
-              <View style={styles.levelProgress}>
-                <View
-                  style={[styles.levelProgressFill, { width: `${getLevelProgress()}%` }]}
-                />
-              </View>
-              <Text style={styles.levelExp}>{getNextLevelExp()}/100 XP</Text>
-            </View>
-          </View>
-        </View>
+        <UserHeader />
 
         {/* Stats Cards */}
         <View style={styles.statsContainer}>
@@ -147,6 +133,12 @@ export default function ProfileScreen({ navigation }: any) {
         <View style={styles.menuSection}>
           <Text style={styles.menuSectionTitle}>Account</Text>
           <View style={styles.menuContainer}>
+            <MenuItem
+              icon="diamond"
+              title="Gem Shop"
+              subtitle={`${user?.gems || 0} gems available`}
+              onPress={() => navigation.navigate('Shop')}
+            />
             <MenuItem
               icon="person"
               title="Edit Profile"

@@ -5,19 +5,17 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getPOIs } from '../services/api';
 import { useLocation } from '../contexts/LocationContext';
+import { POI } from '../types';
+import UserHeader from '../components/UserHeader';
 
 // Conditionally import MapView only on native platforms
 let MapView: any = null;
 let Marker: any = null;
 
 if (Platform.OS !== 'web') {
-  try {
-    const Maps = require('react-native-maps');
-    MapView = Maps.default;
-    Marker = Maps.Marker;
-  } catch (error) {
-    console.log('react-native-maps not available');
-  }
+  const Maps = require('react-native-maps');
+  MapView = Maps.default;
+  Marker = Maps.Marker;
 }
 
 const { width, height } = Dimensions.get('window');
@@ -27,8 +25,10 @@ const POI_TYPES = [
   { key: 'all', label: 'All', icon: 'grid' },
   { key: 'park', label: 'Parks', icon: 'leaf' },
   { key: 'garden', label: 'Gardens', icon: 'flower' },
-  { key: 'market', label: 'Markets', icon: 'basket' },
-  { key: 'cafe', label: 'Cafes', icon: 'cafe' },
+  { key: 'landmark', label: 'Landmarks', icon: 'location' },
+  { key: 'museum', label: 'Museums', icon: 'library' },
+  { key: 'restaurant', label: 'Restaurants', icon: 'restaurant' },
+  { key: 'shop', label: 'Shops', icon: 'bag' },
 ];
 
 // Icon mapping for POI types
@@ -38,15 +38,6 @@ const typeIcons: { [key: string]: string } = {
   market: 'basket',
   cafe: 'cafe',
 };
-
-interface POI {
-  id: string;
-  title: string;
-  description: string;
-  lat: number;
-  lng: number;
-  type: string;
-}
 
 export default function ExploreScreen({ navigation }: any) {
   const { location, requestPermission, startLocationUpdates, stopLocationUpdates } = useLocation();
@@ -75,33 +66,45 @@ export default function ExploreScreen({ navigation }: any) {
             id: '1',
             title: 'Central Park Conservatory Garden',
             description: 'A formal garden with beautiful flowers and fountains.',
-            lat: 40.7945,
-            lng: -73.9520,
+            location: {
+              latitude: 40.7945,
+              longitude: -73.9520,
+            },
             type: 'park',
+            address: 'Central Park, New York, NY',
           },
           {
             id: '2',
             title: 'Green Market',
             description: 'Local farmers market with organic produce.',
-            lat: 40.7411,
-            lng: -73.9897,
-            type: 'market',
+            location: {
+              latitude: 40.7411,
+              longitude: -73.9897,
+            },
+            type: 'shop',
+            address: 'Union Square, New York, NY',
           },
           {
             id: '3',
             title: 'Eco-Friendly Cafe',
             description: 'A cafe using only compostable packaging.',
-            lat: 40.7306,
-            lng: -73.9866,
-            type: 'cafe',
+            location: {
+              latitude: 40.7306,
+              longitude: -73.9866,
+            },
+            type: 'restaurant',
+            address: 'Greenwich Village, New York, NY',
           },
           {
             id: '4',
             title: 'Urban Pollinator Garden',
             description: 'A small garden supporting bees and butterflies.',
-            lat: 40.7505,
-            lng: -73.9934,
+            location: {
+              latitude: 40.7505,
+              longitude: -73.9934,
+            },
             type: 'garden',
+            address: 'Chelsea, New York, NY',
           },
         ]);
       } finally {
@@ -192,10 +195,7 @@ export default function ExploreScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={['#059669', '#065f46']} style={styles.header}>
-        <Text style={styles.title}>Explore Adventures</Text>
-        <Text style={styles.subtitle}>Discover eco-quests, green spaces, and sustainable spots near you</Text>
-      </LinearGradient>
+      <UserHeader />
       
       {/* Filter Bar */}
       <View style={styles.filterBar}>

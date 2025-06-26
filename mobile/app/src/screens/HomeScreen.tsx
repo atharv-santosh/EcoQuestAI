@@ -22,6 +22,7 @@ import {getActiveHunt, createHunt, getUserHunts} from '../services/api';
 import {useQuest} from '../contexts/QuestContext';
 import {useBadge} from '../contexts/BadgeContext';
 import {useLocation} from '../contexts/LocationContext';
+import UserHeader from '../components/UserHeader';
 
 const {width} = Dimensions.get('window');
 
@@ -88,13 +89,13 @@ const themeGradients: Record<string, [string, string]> = {
 
 export default function HomeScreen({navigation}: any) {
   const {user, loading: userLoading} = useAuth();
-  const [selectedTheme, setSelectedTheme] = useState<string>('urban-nature');
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [hunts, setHunts] = useState<any[]>([]);
   const [loadingHunts, setLoadingHunts] = useState(true);
-  const [headerAnim] = useState(new Animated.Value(0));
+  const [showCompletedQuests, setShowCompletedQuests] = useState(false);
+  const [dropdownAnimation] = useState(new Animated.Value(0));
   const {activeQuests, completedQuests, loading, generateNearbyQuests} = useQuest();
   const {unlockedBadges} = useBadge();
   const {requestPermission} = useLocation();
@@ -123,33 +124,43 @@ export default function HomeScreen({navigation}: any) {
     }
   };
 
-  // Animate header on mount
-  useEffect(() => {
-    Animated.timing(headerAnim, {
-      toValue: 1,
-      duration: 700,
-      useNativeDriver: true,
-    }).start();
-  }, []);
-
   const handleGenerateQuest = async () => {
     if (!user) return;
+    
+    // Check if we have location permission and current location
     if (!location) {
-      Alert.alert('Location Required', 'Please enable location services to generate your quest.');
+      const hasPermission = await requestPermission();
+      if (!hasPermission) {
+        Alert.alert('Location Required', 'Please enable location services in your device settings to generate quests.');
+        return;
+      }
+    }
+    
+    // Check if we can generate more quests
+    if (activeQuests.length >= 3) {
+      Alert.alert(
+        'Quest Limit Reached',
+        'You can only have 3 active quests at a time. Complete or delete some quests first.',
+        [
+          { text: 'OK' },
+          { text: 'View Quests', onPress: () => navigation.navigate('Hunt') }
+        ]
+      );
       return;
     }
+    
     setIsGenerating(true);
     try {
-      const response = await createHunt({
-        theme: selectedTheme,
-        location: {
-          lat: location.coords.latitude,
-          lng: location.coords.longitude,
-        },
-        userId: user.id,
-      });
-      setHunts([response.data, ...hunts]);
-      Alert.alert('Quest Created!', 'Your eco-quest is ready.');
+      // Generate quests using the QuestContext (random theme)
+      await generateNearbyQuests();
+      Alert.alert(
+        'Quest Created!', 
+        'Your eco-quest is ready!',
+        [
+          { text: 'OK' },
+          { text: 'View Quest', onPress: () => navigation.navigate('Hunt') }
+        ]
+      );
     } catch (err: any) {
       Alert.alert('Error', err?.response?.data?.message || 'Failed to create quest.');
     } finally {
@@ -166,17 +177,6 @@ export default function HomeScreen({navigation}: any) {
   const getProgressPercentage = () => {
     const total = activeQuests.length + completedQuests.length;
     return total > 0 ? Math.round((completedQuests.length / total) * 100) : 0;
-  };
-
-  const getNextLevelExp = () => {
-    if (!user) return 100;
-    const currentLevelExp = (user.level - 1) * 100;
-    return user.experience - currentLevelExp;
-  };
-
-  const getLevelProgress = () => {
-    const currentExp = getNextLevelExp();
-    return Math.min((currentExp / 100) * 100, 100);
   };
 
   if (userLoading || loadingHunts) {
@@ -197,34 +197,7 @@ export default function HomeScreen({navigation}: any) {
         }
       >
         {/* Header */}
-        <Animated.View style={[styles.header, { opacity: headerAnim }]}>
-          <View style={styles.headerContent}>
-            <View style={styles.userInfo}>
-              <Image source={{ uri: user?.picture }} style={styles.avatar} />
-              <View style={styles.userText}>
-                <Text style={styles.greeting}>Welcome back,</Text>
-                <Text style={styles.userName}>{user?.name}</Text>
-              </View>
-            </View>
-            <TouchableOpacity
-              style={styles.notificationButton}
-              onPress={() => navigation.navigate('Profile')}
-            >
-              <Ionicons name="notifications-outline" size={24} color="#374151" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Level Progress */}
-          <View style={styles.levelContainer}>
-            <View style={styles.levelInfo}>
-              <Text style={styles.levelText}>Level {user?.level}</Text>
-              <Text style={styles.expText}>{getNextLevelExp()}/100 XP</Text>
-            </View>
-            <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: `${getLevelProgress()}%` }]} />
-            </View>
-          </View>
-        </Animated.View>
+        <UserHeader />
 
         {/* Quick Stats */}
         <View style={styles.statsContainer}>
@@ -248,35 +221,22 @@ export default function HomeScreen({navigation}: any) {
         {/* Quest Generation */}
         <View style={styles.questSection}>
           <Text style={styles.sectionTitle}>Generate New Quest</Text>
-          <Text style={styles.sectionSubtitle}>Choose a theme and start exploring</Text>
+          <Text style={styles.sectionSubtitle}>Discover a random eco-adventure near you</Text>
           
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.themeScroll}>
-            {themes.map((theme) => (
-              <TouchableOpacity
-                key={theme.id}
-                style={[
-                  styles.themeCard,
-                  selectedTheme === theme.id && styles.selectedThemeCard
-                ]}
-                onPress={() => setSelectedTheme(theme.id)}
-              >
-                <Image source={{ uri: theme.image }} style={styles.themeImage} />
-                <LinearGradient
-                  colors={theme.gradient as [string, string]}
-                  style={styles.themeOverlay}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <Text style={styles.themeTitle}>{theme.title}</Text>
-                  <Text style={styles.themeDescription}>{theme.description}</Text>
-                  <View style={styles.themeMeta}>
-                    <Text style={styles.themeDuration}>{theme.duration}</Text>
-                    <Text style={styles.themeDifficulty}>{theme.difficulty}</Text>
-                  </View>
-                </LinearGradient>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          <View style={styles.generateCard}>
+            <LinearGradient
+              colors={['#059669', '#065f46']}
+              style={styles.generateCardGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Ionicons name="leaf" size={48} color="white" />
+              <Text style={styles.generateCardTitle}>Ready for Adventure?</Text>
+              <Text style={styles.generateCardDescription}>
+                Generate a random quest based on your location and interests
+              </Text>
+            </LinearGradient>
+          </View>
 
           <TouchableOpacity
             style={[styles.generateButton, isGenerating && styles.generateButtonDisabled]}
@@ -288,7 +248,7 @@ export default function HomeScreen({navigation}: any) {
             ) : (
               <>
                 <Ionicons name="add-circle" size={20} color="white" />
-                <Text style={styles.generateButtonText}>Generate Quest</Text>
+                <Text style={styles.generateButtonText}>Generate Random Quest</Text>
               </>
             )}
           </TouchableOpacity>
@@ -315,30 +275,6 @@ export default function HomeScreen({navigation}: any) {
             ))}
           </View>
         )}
-
-        {/* Active Quests */}
-        {activeQuests.length > 0 && (
-          <View style={styles.questsSection}>
-            <Text style={styles.sectionTitle}>Active Quests</Text>
-            {activeQuests.slice(0, 2).map((quest) => (
-              <TouchableOpacity
-                key={quest.id}
-                style={styles.questCard}
-                onPress={() => navigation.navigate('QuestDetail', { questId: quest.id })}
-              >
-                <View style={styles.questHeader}>
-                  <Ionicons name="leaf" size={24} color="#10b981" />
-                  <Text style={styles.questTitle}>{quest.title}</Text>
-                </View>
-                <Text style={styles.questDescription}>{quest.description}</Text>
-                <View style={styles.questFooter}>
-                  <Text style={styles.questReward}>{quest.experience} XP</Text>
-                  <Text style={styles.questCategory}>{quest.category}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -351,83 +287,6 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 12,
-  },
-  userText: {
-    flex: 1,
-  },
-  greeting: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  userName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#374151',
-  },
-  notificationButton: {
-    padding: 8,
-  },
-  levelContainer: {
-    backgroundColor: 'white',
-    marginHorizontal: 20,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  levelInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  levelText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  expText: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: '#e5e7eb',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#059669',
-    borderRadius: 4,
   },
   statsContainer: {
     flexDirection: 'row',
@@ -463,94 +322,58 @@ const styles = StyleSheet.create({
   },
   questSection: {
     marginBottom: 24,
+    paddingHorizontal: 20,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#374151',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   sectionSubtitle: {
     fontSize: 14,
     color: '#6b7280',
-    marginBottom: 24,
+    marginBottom: 20,
   },
-  themeScroll: {
-    paddingHorizontal: 20,
-  },
-  themeCard: {
-    width: 200,
-    height: 200,
-    borderRadius: 12,
-    marginRight: 12,
+  generateCard: {
+    borderRadius: 16,
     overflow: 'hidden',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  selectedThemeCard: {
-    borderWidth: 2,
-    borderColor: '#059669',
-  },
-  themeImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 12,
-  },
-  themeOverlay: {
-    flex: 1,
-    padding: 16,
-    borderRadius: 12,
-    justifyContent: 'flex-end',
-  },
-  themeTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 8,
-  },
-  themeDescription: {
-    fontSize: 12,
-    color: 'white',
-  },
-  themeMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  generateCardGradient: {
+    padding: 24,
     alignItems: 'center',
   },
-  themeDuration: {
-    fontSize: 10,
+  generateCardTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
     color: 'white',
-    fontWeight: '600',
+    marginTop: 12,
+    marginBottom: 8,
+    textAlign: 'center',
   },
-  themeDifficulty: {
-    fontSize: 10,
-    color: 'white',
-    fontWeight: '600',
+  generateCardDescription: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'center',
+    lineHeight: 20,
   },
   generateButton: {
     backgroundColor: '#059669',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  generateButtonDisabled: {
-    backgroundColor: '#e5e7eb',
-  },
-  generateButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: 'white',
-  },
-  huntsSection: {
-    marginBottom: 24,
-  },
-  huntCard: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: 'white',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
     borderRadius: 12,
-    marginHorizontal: 20,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -559,67 +382,48 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  generateButtonDisabled: {
+    backgroundColor: '#9ca3af',
+  },
+  generateButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
+  huntsSection: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+  huntCard: {
+    backgroundColor: 'white',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   huntInfo: {
     flex: 1,
   },
   huntTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: '#374151',
+    marginBottom: 4,
   },
   huntDate: {
     fontSize: 12,
     color: '#6b7280',
-  },
-  questsSection: {
-    marginBottom: 24,
-  },
-  questCard: {
-    backgroundColor: 'white',
-    padding: 16,
-    borderRadius: 12,
-    marginHorizontal: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  questHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  questTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#374151',
-    flex: 1,
-  },
-  questDescription: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 12,
-    lineHeight: 20,
-  },
-  questFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  questReward: {
-    fontSize: 12,
-    color: '#f59e0b',
-    fontWeight: '600',
-  },
-  questCategory: {
-    fontSize: 12,
-    color: '#059669',
-    fontWeight: '600',
-    textTransform: 'capitalize',
   },
 });

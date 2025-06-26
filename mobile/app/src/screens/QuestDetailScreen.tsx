@@ -14,13 +14,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuest } from '../contexts/QuestContext';
 import { useLocation } from '../contexts/LocationContext';
 import { useAuth } from '../contexts/AuthContext';
+import { freeAIService } from '../services/freeAIService';
 
 export default function QuestDetailScreen({ route, navigation }: any) {
-  const { questId } = route.params;
+  const { questId, capturedImage: initialImage } = route.params;
   const { quests, submitPhoto, loading } = useQuest();
   const { location } = useLocation();
   const { user } = useAuth();
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] = useState<string | null>(initialImage || null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [aiStatus, setAiStatus] = useState<{ hasToken: boolean; isConfigured: boolean } | null>(null);
 
   const quest = quests.find(q => q.id === questId);
 
@@ -31,37 +35,87 @@ export default function QuestDetailScreen({ route, navigation }: any) {
     }
   }, [quest]);
 
+  useEffect(() => {
+    if (initialImage) {
+      setSelectedImage(initialImage);
+    }
+  }, [initialImage]);
+
+  useEffect(() => {
+    // Check AI status on component mount
+    const status = freeAIService.getStatus();
+    setAiStatus(status);
+  }, []);
+
   const handleTakePhoto = () => {
     navigation.navigate('Camera', { questId });
   };
 
   const handleSubmitPhoto = async () => {
-    if (!selectedImage) {
+    if (!selectedImage || !quest) {
       Alert.alert('Error', 'Please take a photo first');
       return;
     }
 
     try {
-      const success = await submitPhoto(questId, selectedImage);
-      if (success) {
-        Alert.alert(
-          'Success!',
-          'Quest completed! You earned ' + quest?.experience + ' XP',
-          [
-            { text: 'OK', onPress: () => navigation.goBack() }
-          ]
-        );
+      setIsAnalyzing(true);
+      
+      // Convert image to base64 for AI analysis
+      const response = await fetch(selectedImage);
+      const blob = await response.blob();
+      const base64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const result = reader.result as string;
+          resolve(result.split(',')[1]); // Remove data:image/jpeg;base64, prefix
+        };
+        reader.readAsDataURL(blob);
+      });
+
+      // Analyze image with AI
+      const analysis = await freeAIService.analyzeImage(base64, quest.requirements);
+      setAnalysisResult(analysis);
+
+      console.log('Photo analysis completed:', {
+        confidence: analysis.confidence,
+        detectedObjects: analysis.detectedObjects,
+        success: analysis.success
+      });
+
+      if (analysis.success && analysis.confidence >= 70) {
+        // Submit photo for quest completion
+        const success = await submitPhoto(questId, selectedImage);
+        if (success) {
+          Alert.alert(
+            'Success!',
+            `Quest completed! You earned ${quest?.experience} XP\n\nAI Analysis: ${analysis.confidence}% confidence\nDetected: ${analysis.detectedObjects.join(', ')}`,
+            [
+              { text: 'OK', onPress: () => navigation.goBack() }
+            ]
+          );
+        } else {
+          Alert.alert(
+            'Try Again',
+            'The photo doesn\'t match the quest requirements. Please try again.',
+            [
+              { text: 'OK' }
+            ]
+          );
+        }
       } else {
         Alert.alert(
-          'Try Again',
-          'The photo doesn\'t match the quest requirements. Please try again.',
+          'Photo Analysis Failed',
+          `AI analysis shows ${analysis.confidence}% confidence. The photo doesn't seem to match the quest requirements.\n\nDetected: ${analysis.detectedObjects.join(', ')}\n\nPlease try again with a different photo.`,
           [
             { text: 'OK' }
           ]
         );
       }
     } catch (error) {
+      console.error('Error submitting photo:', error);
       Alert.alert('Error', 'Failed to submit photo. Please try again.');
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
@@ -126,7 +180,7 @@ export default function QuestDetailScreen({ route, navigation }: any) {
   };
 
   const distance = calculateDistance();
-  const isInRange = distance !== null && distance <= quest?.location.radius;
+  const isInRange = distance !== null && quest?.location?.radius && distance <= quest.location.radius;
 
   if (!quest) {
     return (
@@ -188,6 +242,20 @@ export default function QuestDetailScreen({ route, navigation }: any) {
               <Ionicons name="camera" size={20} color="#059669" />
               <Text style={styles.requirementText}>{quest.requirements.description}</Text>
             </View>
+            
+            {/* AI Status Indicator */}
+            {aiStatus && (
+              <View style={styles.aiStatusContainer}>
+                <Ionicons 
+                  name={aiStatus.hasToken ? "checkmark-circle" : "information-circle"} 
+                  size={16} 
+                  color={aiStatus.hasToken ? "#10b981" : "#6b7280"} 
+                />
+                <Text style={[styles.aiStatusText, { color: aiStatus.hasToken ? "#10b981" : "#6b7280" }]}>
+                  {aiStatus.hasToken ? "Facebook DETR AI Available" : "Using Fallback Analysis"}
+                </Text>
+              </View>
+            )}
           </View>
 
           <View style={styles.rewardsSection}>
@@ -240,14 +308,16 @@ export default function QuestDetailScreen({ route, navigation }: any) {
                   <TouchableOpacity
                     style={[styles.actionButton, styles.submitButton]}
                     onPress={handleSubmitPhoto}
-                    disabled={loading}
+                    disabled={loading || isAnalyzing}
                   >
-                    {loading ? (
+                    {loading || isAnalyzing ? (
                       <ActivityIndicator size="small" color="#fff" />
                     ) : (
                       <>
                         <Ionicons name="checkmark" size={20} color="#fff" />
-                        <Text style={[styles.actionButtonText, styles.submitButtonText]}>Submit</Text>
+                        <Text style={[styles.actionButtonText, styles.submitButtonText]}>
+                          {isAnalyzing ? 'Analyzing...' : 'Submit'}
+                        </Text>
                       </>
                     )}
                   </TouchableOpacity>
@@ -534,5 +604,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6b7280',
     marginTop: 8,
+  },
+  aiStatusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f9fafb',
+    padding: 12,
+    borderRadius: 8,
+  },
+  aiStatusText: {
+    fontSize: 14,
+    marginLeft: 8,
   },
 }); 
